@@ -1,6 +1,12 @@
 #include <iostream>
 #include <vector>
 #include <set>
+#include <string>
+#include <map>
+
+/**
+ * Es wurde Carlas Methode genutzt, weil eine auslagerung in eine extra Klasse bei diesem Umfang nicht viel Sinn macht
+ */
 
 void placeBuilding();
 void deleteArea();
@@ -10,58 +16,57 @@ void menu();
 class Material {
 protected:
     int price;
-    char *name;
+    char* name;
 public:
-    Material(int price, char *name){
+    Material(int price, char* name) {
         this->price = price;
         this->name = name;
     }
 
-    char *getName() {
+    char* getName() {
         return name;
     }
-    int getPrice(){
+    int getPrice() {
         return price;
     }
 };
 
 class Wood : public Material {
 public:
-    Wood() : Material(1, "Wood"){
+    Wood() : Material(1, "Wood") {
 
     }
 };
 
 class Plastic : public Material {
 public:
-    Plastic() : Material(2, "Plastic"){
-
+    Plastic() : Material(2, "Plastic") {
     }
 
 };
 
 class Metal : public Material {
 public:
-    Metal() : Material(3, "Metal"){
+    Metal() : Material(3, "Metal") {
 
     }
 };
 
-class Building{
+class Building {
 protected:
     int price;
     char label;
-    char *name;
-    std::vector<Material*> materials;
+    char* name;
+    std::map<Material*, int> materials;
 
 public:
-    Building(int price, char label, char *name){
+    Building(int price, char label, char* name) {
         this->price = price;
         this->label = label;
         this->name = name;
     }
 
-    char *getName() {
+    char* getName() {
         return name;
     }
 
@@ -73,48 +78,51 @@ public:
         return price;
     }
 
-    std::vector<Material*> getMaterials() {
+    int getTotalCost() {
+        int totalCost = price;
+        for (auto iterator : materials) {
+            auto material = iterator.first;
+            auto count = iterator.second;
+            totalCost += material->getPrice() * count;
+        }
+        return totalCost;
+    }
+
+    std::map<Material*, int> getMaterials() {
         return materials;
     }
 };
 
-class WaterEnergyPlant : public Building{
+class WaterEnergyPlant : public Building {
 public:
-    WaterEnergyPlant() : Building(1, 'W', "WaterEngeryPlant"){
-        materials = std::vector<Material*>();
-        materials.push_back(new Wood());
-        materials.push_back(new Wood());
-        materials.push_back(new Plastic());
-        materials.push_back(new Plastic());
-        materials.push_back(new Metal());
+    WaterEnergyPlant() : Building(1, 'W', "WaterEngeryPlant") {
+        materials = std::map<Material*, int>();
+        materials.insert({ new Wood(), 2 });
+        materials.insert({ new Plastic(), 2 });
+        materials.insert({ new Metal(), 1 });
     }
 };
 
-class SolarEnergyPlant : public Building{
+class SolarEnergyPlant : public Building {
 public:
-    SolarEnergyPlant() : Building(1, 'S', "SolarEnegeryPlant"){
-        materials = std::vector<Material*>();
-        materials.push_back(new Plastic());
-        materials.push_back(new Plastic());
-        materials.push_back(new Plastic());
-        materials.push_back(new Metal());
-        materials.push_back(new Metal());
+    SolarEnergyPlant() : Building(1, 'S', "SolarEnegeryPlant") {
+        materials = std::map<Material*, int>();
+        materials.insert({ new Plastic(), 3 });
+        materials.insert({ new Metal(), 2 });
     }
 };
 
-class WindEnergyPlant : public Building{
+class WindEnergyPlant : public Building {
 public:
-    WindEnergyPlant() : Building(1, 'I', "WindEnergyPlant"){
-        materials = std::vector<Material*>();
-        materials.push_back(new Wood());
-        materials.push_back(new Wood());
-        materials.push_back(new Plastic());
-        materials.push_back(new Metal());
-        materials.push_back(new Metal());
+    WindEnergyPlant() : Building(1, 'I', "WindEnergyPlant") {
+        materials = std::map<Material*, int>();
+        materials.insert({ new Wood(), 2 });
+        materials.insert({ new Plastic(), 1 });
+        materials.insert({ new Metal(), 2 });
     }
 };
 
-Building *menuBuilding();
+Building* menuBuilding();
 
 int length;
 int width;
@@ -123,17 +131,17 @@ class CapycitySim {
 private:
     int length;
     int width;
-    Building ***plan;
+    Building*** plan;
 
     bool isValidRectangle(int x, int y, int length, int width) {
         return 0 <= x
-               && x < this->length
-               && 0 <= y
-               && y < this->width
-               && 0 <= length
-               && (x + length) <= this->length
-               && 0 <= width
-               && (y + width) <= this->width;
+            && x < this->length
+            && 0 <= y
+            && y < this->width
+            && 0 <= length
+            && (x + length) <= this->length
+            && 0 <= width
+            && (y + width) <= this->width;
     }
 
 public:
@@ -141,17 +149,17 @@ public:
         this->length = length;
         this->width = width;
 
-        plan = new Building **[length];
+        plan = new Building * *[length];
         for (int x = 0; x < length; x++) {
-            plan[x] = new Building*[width];
+            plan[x] = new Building * [width];
             for (int y = 0; y < width; y++) {
                 plan[x][y] = nullptr;
             }
         }
     }
 
-    bool placeBuilding(Building * building, int startPositionX, int startPositionY, int length, int width) {
-        if (!isValidRectangle(startPositionX,startPositionY, length, width)) {
+    bool placeBuilding(Building* building, int startPositionX, int startPositionY, int length, int width) {
+        if (!isValidRectangle(startPositionX, startPositionY, length, width)) {
             return false;
         }
 
@@ -174,7 +182,7 @@ public:
     }
 
     bool deleteArea(int startPositionX, int startPositionY, int x, int y) {
-        if (!isValidRectangle(startPositionX,startPositionY, x, y)) {
+        if (!isValidRectangle(startPositionX, startPositionY, x, y)) {
             return false;
         }
 
@@ -187,15 +195,15 @@ public:
         return true;
     }
 
-    Building  ***getPlan() {
+    Building*** getPlan() {
         return plan;
     }
 
 };
 
-CapycitySim *sim = nullptr;
+CapycitySim* sim = nullptr;
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
 
     if (argc != 3) {
         std::cout << "Usage: " << std::endl;
@@ -208,11 +216,11 @@ int main(int argc, char **argv) {
         width = std::stoi(argv[2]);
 
     }
-    catch (std::invalid_argument const &ex) {
+    catch (std::invalid_argument const& ex) {
         std::cout << "Input must be of 2 integer numbers." << std::endl;
         return 2;
     }
-    catch (std::out_of_range const &ex) {
+    catch (std::out_of_range const& ex) {
         std::cout << "The number is too big." << std::endl;
         return 3;
     }
@@ -237,23 +245,23 @@ void menu() {
     std::cin >> option;
 
     switch (option) {
-        case 1:
-            placeBuilding();
-            break;
-        case 2:
-            deleteArea();
-            break;
-        case 3:
-            showConstructionPlan();
-            break;
-        case 4:
-            exit(0);
-        default:
-            std::cout << "Not a valid option" << std::endl;
+    case 1:
+        placeBuilding();
+        break;
+    case 2:
+        deleteArea();
+        break;
+    case 3:
+        showConstructionPlan();
+        break;
+    case 4:
+        exit(0);
+    default:
+        std::cout << "Not a valid option" << std::endl;
     }
 }
 
-Building *menuBuilding() {
+Building* menuBuilding() {
     std::cout << "Please select a building to place:" << std::endl;
     std::cout << "W) Water energy plant" << std::endl;
     std::cout << "S) Solar energy plant" << std::endl;
@@ -264,24 +272,24 @@ Building *menuBuilding() {
     std::cin >> buildingSelected;
 
     switch (toupper(buildingSelected)) {
-        case 'W':
-            return new WaterEnergyPlant();
-            break;
-        case 'S':
-            return new SolarEnergyPlant();
-            break;
-        case 'I':
-            return new WindEnergyPlant();
-            break;
-        case 'B':
-            menu();
-        default:
-            std::cout << "Not a valid option" << std::endl;
-            menuBuilding();
+    case 'W':
+        return new WaterEnergyPlant();
+        break;
+    case 'S':
+        return new SolarEnergyPlant();
+        break;
+    case 'I':
+        return new WindEnergyPlant();
+        break;
+    case 'B':
+        menu();
+    default:
+        std::cout << "Not a valid option" << std::endl;
+        menuBuilding();
     }
 }
 
-int getInteger(char* prompt){
+int getInteger(char* prompt) {
     int result;
     do {
         std::cout << prompt << std::endl;
@@ -291,13 +299,13 @@ int getInteger(char* prompt){
             std::cin.ignore();
             std::cerr << "Invalid input: must be a number" << std::endl;
         }
-    } while(std::cin.fail());
+    } while (std::cin.fail());
     return result;
 }
 
 void placeBuilding() {
 
-    Building * building = menuBuilding();
+    Building* building = menuBuilding();
 
     int startPositionX = getInteger("Enter a start position X: ");
     int startPositionY = getInteger(("Enter a start position Y: "));
@@ -322,7 +330,7 @@ void deleteArea() {
     int y = getInteger(("Enter the width of the building: "));
 
     bool deleted = sim->deleteArea(startPositionX, startPositionY, x, y);
-    if(!deleted){
+    if (!deleted) {
         std::cout << "This place is already empty or input is invalid!" << std::endl;
         deleteArea();
     }
@@ -334,10 +342,11 @@ void showConstructionPlan() {
 
     for (int row = 0; row < width; row++) {
         for (int column = 0; column < length; column++) {
-            Building *building = sim->getPlan()[column][row];
+            Building* building = sim->getPlan()[column][row];
             if (building == nullptr) {
                 std::cout << 'E';
-            } else {
+            }
+            else {
                 uniqueBuildings.insert(building);
                 std::cout << building->getLabel();
             }
@@ -347,14 +356,13 @@ void showConstructionPlan() {
     }
 
     int totalCost = 0;
-    for(Building *building : uniqueBuildings) {
-        int totalCostForBuilding = building->getPrice();
-        for(Material* material : building->getMaterials()) {
-            totalCostForBuilding += material->getPrice();
-        }
+    for (Building* building : uniqueBuildings) {
+        int totalCostForBuilding = building->getTotalCost();
         std::cout << building->getName() << " for " << totalCostForBuilding << " geld" << std::endl;
-        for(Material* material : building->getMaterials()) {
-            std::cout << "  - " << material->getName() << " for " << material->getPrice() << " geld" << std::endl;
+        for (auto iter : building->getMaterials()) {
+            auto material = iter.first;
+            auto count = iter.second;
+            std::cout << "  - " << count << "x " << material->getName() << " for " << material->getPrice() << " geld" << std::endl;
         }
         totalCost += totalCostForBuilding;
     }
@@ -362,4 +370,4 @@ void showConstructionPlan() {
     std::cout << "Total cost " << totalCost << " geld" << std::endl;
 }
 
-//so viel schoki hier :o
+//ich geh nie wieder aus diesem schoki himmel :3
