@@ -13,6 +13,7 @@ void deleteArea();
 void showConstructionPlan();
 void menu();
 
+
 class Material {
 protected:
     int price;
@@ -58,12 +59,14 @@ protected:
     char label;
     char* name;
     std::map<Material*, int> materials;
+    int capacity;
 
 public:
-    Building(int price, char label, char* name) {
+    Building(int price, char label, char* name, int capacity) {
         this->price = price;
         this->label = label;
         this->name = name;
+        this->capacity = capacity;
     }
 
     char* getName() {
@@ -76,6 +79,9 @@ public:
 
     int getPrice() {
         return price;
+    }
+    int getCapacity() {
+        return capacity;
     }
 
     int getTotalCost() {
@@ -95,26 +101,28 @@ public:
 
 class WaterEnergyPlant : public Building {
 public:
-    WaterEnergyPlant() : Building(1, 'W', "WaterEngeryPlant") {
+    WaterEnergyPlant() : Building(1, 'W', "WaterEngeryPlant", 20) {
         materials = std::map<Material*, int>();
         materials.insert({ new Wood(), 2 });
         materials.insert({ new Plastic(), 2 });
         materials.insert({ new Metal(), 1 });
     }
+
 };
 
 class SolarEnergyPlant : public Building {
 public:
-    SolarEnergyPlant() : Building(1, 'S', "SolarEnegeryPlant") {
+    SolarEnergyPlant() : Building(1, 'S', "SolarEnegeryPlant", 10) {
         materials = std::map<Material*, int>();
         materials.insert({ new Plastic(), 3 });
         materials.insert({ new Metal(), 2 });
     }
+
 };
 
 class WindEnergyPlant : public Building {
 public:
-    WindEnergyPlant() : Building(1, 'I', "WindEnergyPlant") {
+    WindEnergyPlant() : Building(1, 'I', "WindEnergyPlant", 30) {
         materials = std::map<Material*, int>();
         materials.insert({ new Wood(), 2 });
         materials.insert({ new Plastic(), 1 });
@@ -122,15 +130,10 @@ public:
     }
 };
 
-Building* menuBuilding();
-
-int length;
-int width;
-
-class CapycitySim {
+class Blueprint {
 private:
-    int length;
-    int width;
+    const int length;
+    const int width;
     Building*** plan;
 
     bool isValidRectangle(int x, int y, int length, int width) {
@@ -143,11 +146,9 @@ private:
             && 0 <= width
             && (y + width) <= this->width;
     }
-
 public:
-    CapycitySim(int length, int width) {
-        this->length = length;
-        this->width = width;
+
+    Blueprint(int length, int width) :length(length), width(width) {
 
         plan = new Building * *[length];
         for (int x = 0; x < length; x++) {
@@ -158,6 +159,15 @@ public:
         }
     }
 
+    ~Blueprint() {
+        for (int x = 0; x < length; x++) {
+            for (int y = 0; y < width; y++) {
+                delete plan[x][y];
+            }
+            delete plan[x];
+        }
+        delete plan;
+    }
     bool placeBuilding(Building* building, int startPositionX, int startPositionY, int length, int width) {
         if (!isValidRectangle(startPositionX, startPositionY, length, width)) {
             return false;
@@ -188,7 +198,6 @@ public:
 
         for (int i = startPositionX; i < (startPositionX + x); i++) {
             for (int j = startPositionY; j < (startPositionY + y); j++) {
-                // hehe memory leak, but i don't care
                 plan[i][j] = nullptr;
             }
         }
@@ -199,11 +208,215 @@ public:
         return plan;
     }
 
+    float getK() {
+        float k = 0;
+        int capacity = 0;
+        int price = 0;
+        int area = width * length;
+
+
+        for (int x = 0; x < length; x++) {
+            for (int y = 0; y < width; y++) {
+                if (plan[x][y] == nullptr) {
+                    continue;
+                }
+                capacity += plan[x][y]->getCapacity();
+                price += plan[x][y]->getPrice();
+
+
+
+            }
+        }
+        if (price * area != 0) {
+            k = (float)capacity / (float)(price * area);
+        }
+        return k;
+
+    }
+
+    bool operator()(Blueprint& blueprint) {
+        if (length != blueprint.length || width != blueprint.width) {
+            return false;
+        }
+        for (int x = 0; x < length; x++) {
+            for (int y = 0; y < width; y++) {
+                if (plan[x][y] == blueprint.plan[x][y] && plan[x][y] == nullptr) {
+                    continue;
+                }
+                if (plan[x][y] == nullptr && blueprint.plan[x][y] != nullptr || plan[x][y] != nullptr && blueprint.plan[x][y] == nullptr) {
+                    return false;
+                }
+                if (plan[x][y]->getLabel() == blueprint.plan[x][y]->getLabel()) {
+                    continue;
+                }
+                return false;
+            }
+        }
+        return true;
+    }
 };
 
-CapycitySim* sim = nullptr;
+
+Building* menuBuilding();
+
+int length;
+int width;
+
+class CapycitySim {
+    const int length;
+    const int width;
+    Blueprint* blueprint;
+public:
+    CapycitySim(int length, int width) : length(length), width(width) {
+        addBlueprint();
+
+    }
+
+    std::vector<Blueprint*> blueprints;
+
+
+
+    void menu() {
+        std::cout << "1) Add new construction plan" << std::endl;
+        std::cout << "2) Place Building" << std::endl;
+        std::cout << "3) Delete Area" << std::endl;
+        std::cout << "4) Show current construction plan" << std::endl;
+        std::cout << "5) Quit" << std::endl;
+        std::cout << std::endl;
+
+        int option;
+        std::cin >> option;
+
+        switch (option) {
+        case 1:
+            addBlueprint();
+            break;
+        case 2:
+            placeBuilding();
+            break;
+        case 3:
+            deleteArea();
+            break;
+        case 4:
+            std::sort(blueprints.begin(), blueprints.end(), [](Blueprint* a, Blueprint* b) { return a->getK() > b->getK(); });
+            for (auto blueprint : blueprints) {
+                showConstructionPlan(blueprint);
+            }
+            break;
+        case 5:
+            exit(0);
+        default:
+            std::cout << "Not a valid option" << std::endl;
+        }
+    }
+    void addBlueprint() {
+        int i = 0;
+        for (auto blueprint : blueprints) {
+            if (this->blueprint != blueprint && this->blueprint ->operator()(*blueprint)) {
+                std::cout << "This Plan already exists." << std::endl;
+                blueprints.erase(blueprints.begin() + i);
+                break;
+            }
+            i++;
+
+        }
+
+        Blueprint* blueprint = new Blueprint(length, width);
+        blueprints.push_back(blueprint);
+        this->blueprint = blueprint;
+
+    }
+    int getInteger(char* prompt) {
+        int result;
+        do {
+            std::cout << prompt << std::endl;
+            std::cin >> result;
+            if (std::cin.fail()) {
+                std::cin.clear();
+                std::cin.ignore();
+                std::cerr << "Invalid input: must be a number" << std::endl;
+            }
+        } while (std::cin.fail());
+        return result;
+    }
+
+    void placeBuilding() {
+
+        Building* building = menuBuilding();
+
+        int startPositionX = getInteger("Enter a start position X: ");
+        int startPositionY = getInteger(("Enter a start position Y: "));
+        int x = getInteger("Enter the length of the building: ");
+        int y = getInteger(("Enter the width of the building: "));
+
+        bool placed = blueprint->placeBuilding(building, startPositionX, startPositionY, x, y);
+        if (!placed) {
+            std::cout << "This place is already occupied or input is invalid!" << std::endl;
+            placeBuilding();
+        }
+
+    }
+
+    void deleteArea() {
+
+        std::cout << "Delete Area: " << std::endl;
+
+        int startPositionX = getInteger("Enter a start position X: ");
+        int startPositionY = getInteger(("Enter a start position Y: "));
+        int x = getInteger("Enter the length of the building: ");
+        int y = getInteger(("Enter the width of the building: "));
+
+        bool deleted = blueprint->deleteArea(startPositionX, startPositionY, x, y);
+        if (!deleted) {
+            std::cout << "This place is already empty or input is invalid!" << std::endl;
+            deleteArea();
+        }
+
+    }
+
+    void showConstructionPlan(Blueprint* blueprint) {
+        std::set<Building*> uniqueBuildings;
+
+        for (int row = 0; row < width; row++) {
+            for (int column = 0; column < length; column++) {
+                Building* building = blueprint->getPlan()[column][row];
+                if (building == nullptr) {
+                    std::cout << 'E';
+                }
+                else {
+                    uniqueBuildings.insert(building);
+                    std::cout << building->getLabel();
+                }
+
+            }
+            std::cout << std::endl;
+        }
+
+        int totalCost = 0;
+
+        std::cout << "Index: " << blueprint->getK() << std::endl;
+        for (Building* building : uniqueBuildings) {
+            int totalCostForBuilding = building->getTotalCost();
+            std::cout << building->getName() << " for " << totalCostForBuilding << " geld" << std::endl;
+            for (auto iter : building->getMaterials()) {
+                auto material = iter.first;
+                auto count = iter.second;
+                std::cout << "  - " << count << "x " << material->getName() << " for " << material->getPrice() << " geld" << std::endl;
+            }
+            totalCost += totalCostForBuilding;
+        }
+
+        std::cout << "Total cost " << totalCost << " geld" << std::endl;
+    }
+
+
+
+};
+
+
 
 int main(int argc, char** argv) {
+
 
     if (argc != 3) {
         std::cout << "Usage: " << std::endl;
@@ -225,41 +438,16 @@ int main(int argc, char** argv) {
         return 3;
     }
 
-    sim = new CapycitySim(length, width);
+    CapycitySim sim(length, width);
 
     std::cout << "Welcome to Capycity, please select an option: " << std::endl;
 
     while (true) {
-        menu();
+        sim.menu();
     }
 }
 
-void menu() {
-    std::cout << "1) Place Building" << std::endl;
-    std::cout << "2) Delete Area" << std::endl;
-    std::cout << "3) Show current construction plan" << std::endl;
-    std::cout << "4) Quit" << std::endl;
-    std::cout << std::endl;
 
-    int option;
-    std::cin >> option;
-
-    switch (option) {
-    case 1:
-        placeBuilding();
-        break;
-    case 2:
-        deleteArea();
-        break;
-    case 3:
-        showConstructionPlan();
-        break;
-    case 4:
-        exit(0);
-    default:
-        std::cout << "Not a valid option" << std::endl;
-    }
-}
 
 Building* menuBuilding() {
     std::cout << "Please select a building to place:" << std::endl;
@@ -282,92 +470,13 @@ Building* menuBuilding() {
         return new WindEnergyPlant();
         break;
     case 'B':
-        menu();
+        return nullptr;
     default:
         std::cout << "Not a valid option" << std::endl;
         menuBuilding();
     }
 }
 
-int getInteger(char* prompt) {
-    int result;
-    do {
-        std::cout << prompt << std::endl;
-        std::cin >> result;
-        if (std::cin.fail()) {
-            std::cin.clear();
-            std::cin.ignore();
-            std::cerr << "Invalid input: must be a number" << std::endl;
-        }
-    } while (std::cin.fail());
-    return result;
-}
 
-void placeBuilding() {
 
-    Building* building = menuBuilding();
-
-    int startPositionX = getInteger("Enter a start position X: ");
-    int startPositionY = getInteger(("Enter a start position Y: "));
-    int x = getInteger("Enter the length of the building: ");
-    int y = getInteger(("Enter the width of the building: "));
-
-    bool placed = sim->placeBuilding(building, startPositionX, startPositionY, x, y);
-    if (!placed) {
-        std::cout << "This place is already occupied or input is invalid!" << std::endl;
-        placeBuilding();
-    }
-
-}
-
-void deleteArea() {
-
-    std::cout << "Delete Area: " << std::endl;
-
-    int startPositionX = getInteger("Enter a start position X: ");
-    int startPositionY = getInteger(("Enter a start position Y: "));
-    int x = getInteger("Enter the length of the building: ");
-    int y = getInteger(("Enter the width of the building: "));
-
-    bool deleted = sim->deleteArea(startPositionX, startPositionY, x, y);
-    if (!deleted) {
-        std::cout << "This place is already empty or input is invalid!" << std::endl;
-        deleteArea();
-    }
-
-}
-
-void showConstructionPlan() {
-    std::set<Building*> uniqueBuildings;
-
-    for (int row = 0; row < width; row++) {
-        for (int column = 0; column < length; column++) {
-            Building* building = sim->getPlan()[column][row];
-            if (building == nullptr) {
-                std::cout << 'E';
-            }
-            else {
-                uniqueBuildings.insert(building);
-                std::cout << building->getLabel();
-            }
-
-        }
-        std::cout << std::endl;
-    }
-
-    int totalCost = 0;
-    for (Building* building : uniqueBuildings) {
-        int totalCostForBuilding = building->getTotalCost();
-        std::cout << building->getName() << " for " << totalCostForBuilding << " geld" << std::endl;
-        for (auto iter : building->getMaterials()) {
-            auto material = iter.first;
-            auto count = iter.second;
-            std::cout << "  - " << count << "x " << material->getName() << " for " << material->getPrice() << " geld" << std::endl;
-        }
-        totalCost += totalCostForBuilding;
-    }
-
-    std::cout << "Total cost " << totalCost << " geld" << std::endl;
-}
-
-//ich geh nie wieder aus diesem schoki himmel :3
+//zu viel schoki (rest in piece)
